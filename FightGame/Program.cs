@@ -1,25 +1,24 @@
-﻿bool option1, option2, option3;
-option1 = option2 = option3 = false;
+﻿bool option2, option3;
+option2 = option3 = false;
 int charNum = 0;
 int difficulty = 0;
 Console.CursorVisible = false;
-Console.OutputEncoding = System.Text.Encoding.UTF8;
-int PlayerDamage = 0;
-int PlayerHitChance = 0;
 int PlayerHealth = 200;
 int PlayerMaxHealth = PlayerHealth;
 int PlayerPotions = 3;
 int score = 0;
+int wait = 1000;
+bool InstantAttack = false;
 
-int[] EnemyDamage = { 10, 35, 5 };
-int[] EnemyHitChance = { 70, 20, 90 };
+int[] EnemyDamage = { 15, 30, 10 };
+int[] EnemyHitChance = { 75, 40, 90 };
 int[] ArrEnemyHealth = { 100, 150, 200, 300 };
 int[] EnemyPotion = { 3, 2, 1, 0 };
 
 ConsoleColor[] colors = { ConsoleColor.Green, ConsoleColor.Yellow, ConsoleColor.Red };
 
-string[] character = { "Char1", "Char2", "Char3", "Char4", "Char5", "Char6" };
-string[] enemy = { "Enemy1", "Enemy2", "Enemy3", "Enemy4", "Enemy5" };
+string[] character = { "Char1", "Char2", "Char3" };
+string[] enemy = { "Enemy1", "Enemy2", "Enemy3", "Enemy4" };
 
 Random rand = new Random();
 int EnemyRand = rand.Next(enemy.Count() - 1);
@@ -27,13 +26,18 @@ int EnemyRand = rand.Next(enemy.Count() - 1);
 
 options();
 Console.Clear();
+if (InstantAttack) { wait = 0; }
 
-Console.SetCursorPosition(0, 0);
+Console.SetCursorPosition(60, Console.WindowHeight - 5);
 Console.WriteLine(enemy[EnemyRand] + " has entered the battle!");
+Console.SetCursorPosition(80,6);
 
-
+//sets enemy stats
+ArrEnemyHealth[EnemyRand] += 50 * difficulty;
 int EnemyHealth = ArrEnemyHealth[EnemyRand];
 int EnemyPotions = EnemyPotion[EnemyRand];
+
+//gameplay loop
 while (PlayerHealth > 0)
 {
     attack();
@@ -55,13 +59,14 @@ Console.ReadLine();
 
 void attack()
 {
-    bool attacking = true;
     int choice = 0;
     Console.SetCursorPosition(0, Console.WindowHeight - 6);
     line(ConsoleColor.Yellow);
     writeHealth(20, Console.WindowHeight - 6, PlayerMaxHealth, PlayerHealth);
     writeHealth(60, Console.WindowHeight - 6, ArrEnemyHealth[EnemyRand], EnemyHealth);
-    while (attacking)
+    Console.SetCursorPosition(0, 0);
+    Console.Write($"Score: {score}");
+    while (true)
     {
         Console.SetCursorPosition(0, Console.WindowHeight - 5);
         Console.WriteLine("  Light Attack");
@@ -78,19 +83,13 @@ void attack()
             switch (choice)
             {
                 case 0:
-                    PlayerDamage = 15;
-                    PlayerHitChance = 80;
-                    attacking = false;
+                    EnemyHealth -= attackDmg(15, 80);
                     break;
                 case 1:
-                    PlayerDamage = 30;
-                    PlayerHitChance = 45;
-                    attacking = false;
+                    EnemyHealth -= attackDmg(30, 45);
                     break;
                 case 2:
-                    PlayerDamage = 10;
-                    PlayerHitChance = 100;
-                    attacking = false;
+                    EnemyHealth -= attackDmg(10, 100);
                     break;
                 case 3:
                     if (PlayerHealth < 150)
@@ -102,10 +101,9 @@ void attack()
                             PlayerPotions--;
                             Console.SetCursorPosition(0, 2);
                             Console.WriteLine($"You healed {PotionHealth}HP.");
-                            Thread.Sleep(1000);
+                            Thread.Sleep(wait);
                             Console.SetCursorPosition(0, 2);
                             Console.WriteLine("                             ");
-                            attacking = false;
                             break;
                         }
                         else
@@ -122,27 +120,14 @@ void attack()
                     }
                     break;
             }
+            break;
         }
-    }
-    Console.SetCursorPosition(0, 0);
-    if (rand.Next(100) < PlayerHitChance && choice != 3)
-    {
-        EnemyHealth -= PlayerDamage;
-        if (EnemyHealth < 1) { Console.WriteLine($"You killed {enemy[EnemyRand]}!               "); }
-        else { Console.WriteLine($"You hit {enemy[EnemyRand]} for {PlayerDamage} damage!   "); }
-        writeHealth(60, Console.WindowHeight - 6, ArrEnemyHealth[EnemyRand], EnemyHealth);
-        Thread.Sleep(1000);
-    }
-    else if (choice != 3)
-    {
-        Console.WriteLine("You missed!                   ");
-        Thread.Sleep(1000);
     }
 }
 
 void EnemyAttack()
 {
-    Console.SetCursorPosition(0, 0);
+    Console.SetCursorPosition(60, Console.WindowHeight - 4);
     int attack = rand.Next(4);
     if (attack == 3 && EnemyPotions > 0 && EnemyHealth < 70)
     {
@@ -169,6 +154,21 @@ void EnemyAttack()
     }
 }
 
+int attackDmg(int damage, int hitChance)
+{
+    Console.SetCursorPosition(60, Console.WindowHeight - 5);
+    Random rand = new Random();
+    if (rand.Next(100) < hitChance && damage > 0)
+    {
+        if (EnemyHealth < 1) { Console.WriteLine($"You killed {enemy[EnemyRand]}!               "); }
+        else { Console.WriteLine($"You hit {enemy[EnemyRand]} for {damage} damage!   "); }
+        writeHealth(60, Console.WindowHeight - 6, ArrEnemyHealth[EnemyRand], EnemyHealth);
+    }
+    else { Console.WriteLine("you missed!                     "); damage = 0; }
+    Thread.Sleep(wait);
+    return (damage);
+}
+
 static void writeHealth(int x, int y, int MaxHealth, int health)
 {
     if (health < 0) { health = 0; }
@@ -177,15 +177,11 @@ static void writeHealth(int x, int y, int MaxHealth, int health)
     Console.Write("<");
     for (var i = 0; i < MaxHealth / 10; i++)
     {
-        Console.ForegroundColor = ConsoleColor.DarkRed;
+        if (health > i * 10) { Console.ForegroundColor = ConsoleColor.DarkGreen; }
+        else { Console.ForegroundColor = ConsoleColor.DarkRed; }
         Console.Write("█");
     }
-    Console.SetCursorPosition(x + 1, y);
-    for (var i = 0; i < health / 10; i++)
-    {
-        Console.ForegroundColor = ConsoleColor.DarkGreen;
-        Console.Write("█");
-    }
+    // Console.SetCursorPosition(x + 1, y);
     Console.ResetColor();
     Console.SetCursorPosition(x + MaxHealth / 10 + 1, y);
     Console.WriteLine($">{health}/{MaxHealth}-");
@@ -199,11 +195,17 @@ void options()
     {
         Console.SetCursorPosition(0, Console.WindowHeight - 6);
         line(ConsoleColor.Green);
-        writeOption("option1", option1);
+        Console.SetCursorPosition(0, Console.WindowHeight - 5);
+        writeOption("Instant attacks", InstantAttack);
+        Console.SetCursorPosition(0, Console.WindowHeight - 4);
         writeOption("option2", option2);
+        Console.SetCursorPosition(0, Console.WindowHeight - 3);
         writeOption("option3", option3);
+        Console.SetCursorPosition(0, Console.WindowHeight - 2);
         writeDiff("difficulty", difficulty);
+        Console.SetCursorPosition(0, Console.WindowHeight - 1);
         characterSel("Player Character:", charNum);
+        Console.SetCursorPosition(0, Console.WindowHeight);
         Console.WriteLine($"  Exit Settings");
         Console.SetCursorPosition(1, choice + Console.WindowHeight - 5);
         Console.Write(">");
@@ -215,7 +217,7 @@ void options()
             switch (choice)
             {
                 case 0:
-                    option1 = !option1;
+                    InstantAttack = !InstantAttack;
                     break;
                 case 1:
                     option2 = !option2;
@@ -242,6 +244,12 @@ void options()
                     {
                         charNum = 0;
                     }
+                    // Console.SetCursorPosition(60, Console.WindowHeight-5);       
+                    // Console.WriteLine("Health       Damage      Hitchance");
+                    // Console.WriteLine($"{PlayerHealthArr[charNum]}");
+                    // Console.SetCursorPosition(73, Console.WindowHeight-5);
+                    // Console.WriteLine($"");
+                    // Console.WriteLine($"");
                     break;
                 case 5:
                     options = false;
@@ -272,16 +280,21 @@ void writeOption(string optionName, bool option)
     int toInt = option ? 0 : 2;
     Console.Write($"  {optionName}");
     Console.ForegroundColor = colors[toInt];
-    Console.WriteLine($" {option} ");
+    Console.Write($" {option} ");
     Console.ResetColor();
 }
 
-void line(ConsoleColor color)
+static void line(ConsoleColor color)
 {
     Console.ForegroundColor = color;
     for (var i = 0; i < Console.WindowWidth; i++)
     {
         Console.Write("-");
+    }
+    for (var i = Console.WindowHeight - 5; i < Console.WindowHeight; i++)
+    {
+        Console.SetCursorPosition(52, i);
+        Console.Write("|");
     }
     Console.ResetColor();
 }
